@@ -12,148 +12,170 @@ canvas {
 <body onload="accuDrag()">
 <script>
 
+//Game area
+var accuDragArea;
 
+//Game configuration
 var CANVAS_HEIGHT = 640;
 var CANVAS_WIDTH = 800;
-var infobox;
+var TIME_INTERVAL = 10;
 var framecount = 0;
-var circlesize = 10;
-var clicked = false;
-var gameStarted = false;
-var gameOver = false;
 var deadZoneHeight = 100;
 var score = 0;
 var REDBALL_START = [350, 300];
 var GREENBALL_START = [10, 300];
+
+//Game flags
+var clicked = false;
 var scored = false;
+var gameStarted = false;
+var gameOver = false;
 
 //initial difficulty and ballspeed
 var difficulty = 1;
 var BALLSPEED = 2;
 
-var redBall;
-var greenBall;
-var goalBox;
-var scoreBox;
-var introBox1;
-var deadZone;
+//Core gameplay assets
+var redBall, greenBall, goalBox;
 
+//Intro text boxes
+var introBox1;
+var introBox2;
+var introBox3;
+
+//Game over assets
+var gameOverText1;
+var gameOverText2;
+var gameOverTryAgain;
+var tryAgainBox;
+var gameOverBox;
+
+//Core UI Assets
+var scoreBox;
+var deadZone;
+var easyText;
+var mediumText;
+var hardText;
+var easyBox;
+var mediumBox;
+var hardBox;
+var difficultyBox;
+
+//Debugging
 var infobox;
 
-
+//Collections
 var visualAssets;
+var textBoxes;
+var Buttons;
 
+function initCoreAssets() {
+	redBall = new visualAsset('redBall', 'circle', 'red', 30, REDBALL_START);
+	greenBall = new visualAsset('greenBall', 'circle', 'cyan', 10, GREENBALL_START);
+	goalBox = new visualAsset('goalBox', 'square', 'LightBlue', 40, [740, 280]);
+}
+function initIntroAssets() {
+	introBox1 = new textBox([260,250], 'introBox1', 'orange', 30, 'Arial', "Click to Start.");
+	introBox2 = new textBox([240,355], 'introBox2', 'yellow', 20, 'Arial', "Don't let the red ball fall!");
+	introBox3 = new textBox([25, 307], 'introBox3', 'pink', 14, 'Arial', "Drag this ball into the square!");
 
-
-function accuDrag() {
-	accuDragarea.start();
-
-	redBall = new visualAsset('redBall', 'circle', 30, REDBALL_START);
-	greenBall = new visualAsset('greenBall', 'circle', 10, GREENBALL_START);
-	goalBox = new visualAsset('goalBox', 'square', 40, [740, 280]);
-	introBox1 = new textBox([260,250], 'introBox1');
-	introBox2 = new textBox([240,355], 'introBox2');
-	introBox3 = new textBox([25, 307], 'introBox3');
-	gameOverText1 = new textBox([220, 200], 'gameOverText1');
-	gameOverText2 = new textBox([250, 255], 'gameOverText2');
-	gameOverTryAgain = new textBox([220, 300], 'gameOverTryAgain');
-
-	scoreTextBox = new textBox([645, 41], 'scoreTextBox');
-	scoreBox = new visualAsset('scoreBox', 'rectangle', 150, [640,9], 40);
-
-	easyText = new textBox([20, 38], 'easyText');
-	mediumText = new textBox([92, 38], 'mediumText');
-	hardText = new textBox([205, 38], 'hardText');
-	difficultyBox = new visualAsset('difficultyBox', 'rectangle', 267, [10, 10], 40);
-	easyBox = new visualAsset('easyBox', 'rectangle', 62, [15, 15], 30);
-	mediumBox = new visualAsset('mediumBox', 'rectangle', 107, [85, 15], 30);
-	hardBox = new visualAsset('hardBox', 'rectangle', 70, [200, 15], 30);
-
-	infobox = new textBox([5, 65], 'infoBox');
-	deadzone = new visualAsset('deadzone', 'rectangle', accuDragarea.canvas.width, [0, accuDragarea.canvas.height - deadZoneHeight], deadZoneHeight);
-	gameOverBox = new visualAsset('gameOverBox', 'rectangle', accuDragarea.canvas.width, [0,0], accuDragarea.canvas.height);
-	tryAgainBox = new visualAsset('tryAgainBox', 'rectangle', 350, [210, 265], 50);
-
-
-	//visualAssets = [redBall, greenBall, goalBox, infobox, deadzone];
+}
+function initGameOverAssets() {
+	gameOverText1 = new textBox([220, 200], 'gameOverText1', 'white', 55, 'Georgia', "GAME OVER!");
+	gameOverText2 = new textBox([250, 255], 'gameOverText2', 'white', 20, 'Georgia', "Score = " + score + "         Don't give up!");
+	gameOverTryAgain = new textBox([245, 300], 'gameOverTryAgain', 'pink', 30, 'Century Gothic', "Click here to try again!");
+	tryAgainBox = new visualAsset('tryAgainBox', 'rectangle', 'grey', 300, [235, 265], 50);
+	gameOverBox = new visualAsset('gameOverBox', 'rectangle', 'black', CANVAS_WIDTH, [0,0], CANVAS_HEIGHT);
+}
+function initUIAssets() {
+	scoreTextBox = new textBox([640, 41], 'scoreTextBox', 'black', 36, 'Arial', "Score: " + score);
+	scoreBox = new visualAsset('scoreBox', 'rectangle', 'grey', 155, [635,9], 40);
+	deadzone = new visualAsset('deadzone', 'rectangle', 'red', CANVAS_WIDTH, [0, CANVAS_HEIGHT - deadZoneHeight], deadZoneHeight);
+	easyText = new textBox([20, 38], 'easyText', 'black', 25, 'Georgia', 'Easy');
+	mediumText = new textBox([92, 38], 'mediumText', 'white', 25, 'Georgia', 'Medium');
+	hardText = new textBox([205, 38], 'hardText', 'black', 25, 'Georgia', 'Hard');
+	easyBox = new visualAsset('easyBox', 'rectangle', 'LightBlue', 62, [15, 15], 30);
+	mediumBox = new visualAsset('mediumBox', 'rectangle', 'grey', 107, [85, 15], 30);
+	hardBox = new visualAsset('hardBox', 'rectangle', 'brown', 70, [200, 15], 30);
+	difficultyBox = new visualAsset('difficultyBox', 'rectangle', 'purple', 267, [10, 10], 40);
+}
+function initDebugAssets() {
+	infobox = new debugBox([5, 65], 'infoBox');
+}
+function initCollections() {
 	visualAssets = [redBall, greenBall, goalBox, deadzone, scoreBox, difficultyBox];
 	textBoxes = [introBox1, introBox2, introBox3, scoreTextBox, easyText, mediumText, hardText];
 	buttons = [easyBox, mediumBox, hardBox];
 }
 
-var accuDragarea = {
-	canvas : document.createElement("canvas"),
-	start : function() {
-		this.canvas.width = CANVAS_WIDTH;
-		this.canvas.height = CANVAS_HEIGHT;
-		this.context = this.canvas.getContext("2d");
-		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-		this.interval = setInterval(updateGameArea, 10);
-		window.addEventListener('mousemove', function(e) {
-			if (clicked) {
-				accuDragarea.x = e.pageX;
-				accuDragarea.y = e.pageY;
-			}
-		})
-		window.addEventListener('mousedown', function(e) {
-			clicked = true;
-			accuDragarea.x = e.pageX;
-			accuDragarea.y = e.pageY;
-			if (!gameStarted && !gameOver && (accuDragarea.y > 60)) {
-				gameStarted = true;
-			}
-			checkGrab(e.pageX, e.pageY);
-			checkClick(e.pageX, e.pageY);
+function initGameArea() {
+	accuDragArea = {
+		canvas : document.createElement("canvas"),
+		start : function() {
+			this.canvas.width = CANVAS_WIDTH;
+			this.canvas.height = CANVAS_HEIGHT;
+			this.context = this.canvas.getContext("2d");
+			document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+			this.interval = setInterval(updateGameArea, TIME_INTERVAL);
+			window.addEventListener('mousemove', function(e) {
+				if (clicked) {
+					accuDragArea.x = e.pageX;
+					accuDragArea.y = e.pageY;
+				}
+			})
+			window.addEventListener('mousedown', function(e) {
+				clicked = true;
+				accuDragArea.x = e.pageX;
+				accuDragArea.y = e.pageY;
+				if (!gameStarted && !gameOver && (accuDragArea.y > 60)) {
+					gameStarted = true;
+					removeIntroBoxes();
+				}
+				checkGrab(e.pageX, e.pageY);
+				checkClick(e.pageX, e.pageY);
 
-		})
-		window.addEventListener('mouseup', function(e) {
-			clicked = false;
-			unGrab();
-		})
-	},
-	clear : function() {
-		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+			})
+			window.addEventListener('mouseup', function(e) {
+				clicked = false;
+				unGrab();
+			})
+		},
+		clear : function() {
+			this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		}
 	}
 }
 
+function accuDrag() {
+	initGameArea();
+	initCoreAssets();
+	initIntroAssets();
+	initGameOverAssets()
+	initUIAssets();
+	//initDebugAssets
+	initCollections();
+	accuDragArea.start();
+}
 
 	function updateGameArea() {
 		framecount += 1;
-		accuDragarea.clear();
+		accuDragArea.clear();
 		updateVisualAssets();
 		updateButtons();
+		
 		//Update text boxes last so they don't get overlapped
 		updateTextBoxes();
 		checkGameOver();
 		//infobox.update();
 	}
 
-	function textBox(xy, boxName) {
-		this.x = xy[0];
-		this.y = xy[1];
+	function removeIntroBoxes() {
+		removeFromArray(textBoxes, introBox1);
+		removeFromArray(textBoxes, introBox2);
+		removeFromArray(textBoxes, introBox3);
+	}
 
-		var ctx;
-		ctx = accuDragarea.context;
-		this.update = function() {
-			if(!gameStarted && !gameOver) {
-				if(boxName == 'introBox1') {
-					ctx.fillStyle = 'orange';
-					ctx.font = '30px Arial';
-					ctx.fillText('Click to start.', this.x, this.y);
-				}
-				else if(boxName == 'introBox2') {
-					ctx.fillStyle = 'yellow';
-					ctx.font = '20px Arial';
-					ctx.fillText("Don't let the red ball fall!", this.x, this.y);	
-				}
-				else if(boxName == 'introBox3') {
-					ctx.fillStyle = 'pink';
-					ctx.font = '14px Arial';
-					ctx.fillText("Drag this ball to the square!", this.x, this.y);
-				}
-			}
-	
-
+	function debugBox(Xy, boxname) {
 			if(boxName == 'infoBox') {
 				var fontWeight = 14;
 				ctx.fillSyle = 'black';
@@ -164,71 +186,50 @@ var accuDragarea = {
 				//Line2
 				//ctx.fillText("Square position: " + accuDragpiece.x + ', ' + accuDragpiece.y, this.x, this.y+(fontWeight*2));
 				//Line3
-				ctx.fillText("Mouse click: " + accuDragarea.x + ", " + accuDragarea.y, this.x, this.y+(fontWeight*3));
+				ctx.fillText("Mouse click: " + accuDragArea.x + ", " + accuDragArea.y, this.x, this.y+(fontWeight*3));
 				//Line4
 				ctx.fillText("Circle position: " + redBall.x + ", " + redBall.y, this.x, this.y+(fontWeight*4));
 			}
-			else if(boxName == 'scoreTextBox') {
-				var fontWeight = 36;
-				ctx.fillStyle = 'black';
-				ctx.font = fontWeight + 'px Arial';
-				ctx.fillText('Score: ' + score, this.x, this.y);
-			}
-			else if(boxName == 'easyText') {
-				var fontWeight = 25;
-				ctx.fillStyle = difficulty != 0 ? 'black' : 'white';
-				ctx.font = fontWeight + 'px Georgia';
-				ctx.fillText('Easy', this.x, this.y);
-			}
-			else if(boxName == 'mediumText') {
-				var fontWeight = 25;
-				ctx.fillStyle = difficulty != 1 ? 'black' : 'white';
-				ctx.font = fontWeight + 'px Georgia';
-				ctx.fillText('Medium', this.x, this.y);
-			}
-			else if(boxName == 'hardText') {
-				var fontWeight = 25;
-				ctx.fillStyle = difficulty != 2 ? 'black' : 'white';
-				ctx.font = fontWeight + 'px Georgia';
-				ctx.fillText('Hard', this.x, this.y);
-			}
-			//Game over text boxes
-			else if(boxName == 'gameOverText1') {
-				var fontWeight = 55;
-				ctx.fillStyle = 'white';
-				ctx.font = fontWeight + 'px Georgia';
-				ctx.fillText('GAME OVER!', this.x, this.y);
-			}
-			else if(boxName == 'gameOverText2') {
-				var fontWeight = 20;
-				ctx.fillStyle = 'white';
-				ctx.font = fontWeight + 'px Georgia';
-				ctx.fillText("Score = " + score + "           Don't give up!", this.x, this.y);
-			}
-			else if(boxName == 'gameOverTryAgain') {
-				var fontWeight = 30;
-				ctx.fillStyle = 'pink';
-				ctx.font = fontWeight + 'px Century Gothic';
-				ctx.fillText("Click here to try again!", this.x, this.y);
-			}
-		}
-	
 	}
 
-	function visualAsset(role, shape, size, coords, size2) {
-		this.size2 = size2 || 0;
+	function textBox(xy, boxName, color, fontWeight, fontName, text, value) {
+		this.id = boxName;
+		this.x = xy[0];
+		this.y = xy[1];
+		this.color = color;
+		this.boxName = boxName;
+		this.fontWeight = fontWeight
+		this.fontName = fontName;
+		this.text = text;
+		this.value = value;
 
+		this.update = function() {
+			if(this.boxName == 'easyText') {/*
+				console.log('FLAG HIT!');
+				console.log('color = ' + this.color);*/
+			}
+			var ctx = accuDragArea.context;
+			ctx.fillStyle = this.color;
+			ctx.font = fontWeight + 'px ' + fontName;
+			ctx.fillText(this.text, this.x, this.y);
+		}
+	}
+
+	function visualAsset(role, shape, color, size, coords, size2) {
 		this.role = role;
 		this.shape = shape;
+		this.color = color;
 		this.size = size;
 		this.x = coords[0];
 		this.y = coords[1];
+		this.size2 = size2 || 0;
 		this.grabbed = false;
 		this.xoffset = 0;
 		this.yoffset = 0;
 
 		this.update = function() {
-			ctx = accuDragarea.context;
+			ctx = accuDragArea.context;
+			ctx.fillStyle = this.color;
 			//Circle object definition
 			if (this.shape == 'circle') {
 				//Red ball
@@ -241,12 +242,10 @@ var accuDragarea = {
 						gameOver = true;
 						this.y = CANVAS_HEIGHT - deadZoneHeight;
 					}
-					ctx.fillStyle = "red";
 				}
 				//Green ball
 				else if(this.role == 'greenBall') {
 					checkGoal(this.x, this.y);
-					ctx.fillStyle = 'cyan';
 				}
 
 				//Getting grabbed sets position to offset from mouse
@@ -254,8 +253,8 @@ var accuDragarea = {
 					if(this.role == 'greenBall') {
 						redBall.grabbed = false;
 					}
-					this.x = accuDragarea.x + this.xoffset;
-					this.y = accuDragarea.y + this.yoffset;
+					this.x = accuDragArea.x + this.xoffset;
+					this.y = accuDragArea.y + this.yoffset;
 				}
 
 				//Borders
@@ -279,33 +278,6 @@ var accuDragarea = {
 			}
 			//Rectangle
 			else if (this.shape == 'rectangle') {
-				if (this.role == 'deadzone') {
-					ctx.fillStyle = 'red';
-				}
-				else if(this.role == 'scoreBox'){
-					ctx.fillStyle = 'grey';
-				}
-				else if(this.role == 'difficultyBox'){
-					ctx.fillStyle = 'purple';
-				}
-				else if(this.role == 'easyBox'){
-					ctx.fillStyle = difficulty != 0 ? 'LightBlue' : 'grey';
-									}
-				else if(this.role == 'mediumBox'){
-					ctx.fillStyle = difficulty != 1 ? 'Pink' : 'grey';
-				}
-				else if(this.role == 'hardBox'){
-					ctx.fillStyle = difficulty != 2 ? 'DarkViolet' : 'grey';
-				}
-				//Game over rectangles
-				if(gameOver) {
-					if(this.role == 'gameOverBox') {
-						ctx.fillStyle = 'black';
-					}
-					else if(this.role == 'tryAgainBox') {
-						ctx.fillStyle = 'grey';
-					}
-				}
 				ctx.fillRect(this.x, this.y, size, size2);
 			}
 			//Square
@@ -344,26 +316,61 @@ var accuDragarea = {
 			circles[i].grabbed = false;
 		}
 	}
+	function setDifficultyButtons() {
+		console.log('setDifficulty HIT');
+		if(difficulty == 0) {
+			console.log('difficultyZero HIT');
+			easyBox.color = 'grey';
+			console.log('FlagC, easyText.color = ' + easyText.color);
+			easyText.color = 'white';
+			easyText.update();
+			console.log('FlagD, easyText.color = ' + easyText.color);
+			mediumBox.color = 'pink';
+			mediumText.color = 'black';
+			hardBox.color = 'brown';
+			hardText.color = 'black';
+		}
+		else if(difficulty == 1) {
+			easyBox.color = 'LightBlue';
+			easyText.color = 'black';
+			mediumBox.color = 'grey';
+			mediumText.color = 'white';
+			hardBox.color = 'brown';
+			hardText.color = 'black';
+		}
+		else if(difficulty == 2) {
+			easyBox.color = 'LightBlue';
+			easyText.color = 'black';
+			mediumBox.color = 'pink';
+			mediumText.color = 'black';
+			hardBox.color = 'grey';
+			hardText.color = 'white';
+		}
+		updateTextBoxes();
+	}
 
+	//Handles all button clicks
 	function checkClick(mouseX, mouseY) {
 		if(!gameStarted) {
-			//Add actions for difficulty buttons
-			//Check for Easy button click
-			if((mouseX > easyBox.x) && (mouseX < easyBox.x+easyBox.size) &&
-				(mouseY > easyBox.y) && (mouseY < easyBox.y+easyBox.size2)) {
+			var xoffset = 10;
+			var yoffset = 10;
+			//Currently only respond s to difficulty buttons
+			if((mouseX > easyBox.x+xoffset) && (mouseX < easyBox.x+easyBox.size+xoffset) &&
+				(mouseY > easyBox.y+yoffset) && (mouseY < easyBox.y+easyBox.size2+yoffset)) {
 				difficulty = 0;
 				BALLSPEED = 1;
 			}
-			else if((mouseX > mediumBox.x) && (mouseX < mediumBox.x+mediumBox.size) &&
-				(mouseY > mediumBox.y) && (mouseY < mediumBox.y+mediumBox.size2)) {
+			else if((mouseX > mediumBox.x+xoffset) && (mouseX < mediumBox.x+mediumBox.size+xoffset) &&
+				(mouseY > mediumBox.y+yoffset) && (mouseY < mediumBox.y+mediumBox.size2+yoffset)) {
 				difficulty = 1;
 				BALLSPEED = 2;
 			}
-			else if((mouseX > hardBox.x) && (mouseX < hardBox.x+hardBox.size) &&
-				(mouseY > hardBox.y) && (mouseY < hardBox.y+hardBox.size2)) {
+			else if((mouseX > hardBox.x+xoffset) && (mouseX < hardBox.x+hardBox.size+xoffset) &&
+				(mouseY > hardBox.y+yoffset) && (mouseY < hardBox.y+hardBox.size2+yoffset)) {
 				difficulty = 2;
 				BALLSPEED = 3;
 			}
+			setDifficultyButtons();
 		}
 		if(gameOver) {
 			//check for tryAgainButton click
@@ -378,22 +385,38 @@ var accuDragarea = {
 			(y > goalBox.y) && (y < goalBox.y + goalBox.size)) {
 			console.log("GOOOOOOAAAAAAALLLLL!");
 			score += 1;
+			scoreTextBox.text = "Score : " + score;
 			greenBall.x = GREENBALL_START[0];
 			greenBall.y = GREENBALL_START[1];
 			greenBall.grabbed = false;
 		}
 	}
+	function removeFromArray(array, element) {
+		var index = array.indexOf(element)
+		if (index > -1) {
+			array.splice(index, 1);
+		}
+	}
 	function resetGame() {
+		console.log('resetgame HIT!');
 		visualAssets.splice(visualAssets.indexOf('gameOverBox'), 1);
 		visualAssets.splice(visualAssets.indexOf('tryAgainBox'), 1);
 		textBoxes.splice(textBoxes.indexOf('gameOverText1'), 1);
 		textBoxes.splice(textBoxes.indexOf('gameOverText2'), 1);
 		textBoxes.splice(textBoxes.indexOf('gameOverTryAgain'), 1);
+		textBoxes.push(introBox1);
+		textBoxes.push(introBox2);
+		textBoxes.push(introBox3);
 		redBall.x = REDBALL_START[0];
 		redBall.y = REDBALL_START[1];
 		greenBall.x = GREENBALL_START[0];
 		greenBall.y = GREENBALL_START[1];
 		score = 0;
+		console.log('score = ' + score);
+		console.log('flagA, scoreTextBox.text = ' + scoreTextBox.text);
+		scoreTextBox.update();
+		scoreTextBox.text = 'Score: ' + score;
+		console.log('flagB, scoreTextBox.text = ' + scoreTextBox.text);
 		gameOver = false;
 		gameStarted = false;
 	}
@@ -404,6 +427,7 @@ var accuDragarea = {
 		}
 	}
 	function endGame() {
+		gameOverText2.text = "Score = " + score + "         Don't give up!";
 		visualAssets.push(gameOverBox);
 		visualAssets.push(tryAgainBox);
 		textBoxes.push(gameOverText1);
