@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+canvas {
+	border: 1px solid #d3d3d3;
+	background-color: #313131;
+}
+</style>
+</head>
+<body onload="accuDrag()">
+<script>
+
+
+var CANVAS_HEIGHT = 640;
+var CANVAS_WIDTH = 800;
+var infobox;
+var framecount = 0;
+var circlesize = 10;
+var clicked = false;
+var gameStarted = false;
+var gameOver = false;
+var deadZoneHeight = 100;
+var score = 0;
+var REDBALL_START = [350, 300];
+var GREENBALL_START = [10, 300];
+var scored = false;
+
+//initial difficulty and ballspeed
+var difficulty = 1;
+var BALLSPEED = 2;
+
+var redBall;
+var greenBall;
+var goalBox;
+var scoreBox;
+var introBox1;
+var deadZone;
+
+var infobox;
+
+
+var visualAssets;
+
+
+
+function accuDrag() {
+	accuDragarea.start();
+
+	redBall = new visualAsset('redBall', 'circle', 30, REDBALL_START);
+	greenBall = new visualAsset('greenBall', 'circle', 10, GREENBALL_START);
+	goalBox = new visualAsset('goalBox', 'square', 40, [740, 280]);
+	introBox1 = new textBox([260,250], 'introBox1');
+	introBox2 = new textBox([240,355], 'introBox2');
+	introBox3 = new textBox([25, 307], 'introBox3');
+	gameOverText1 = new textBox([220, 200], 'gameOverText1');
+	gameOverText2 = new textBox([250, 255], 'gameOverText2');
+	gameOverTryAgain = new textBox([220, 300], 'gameOverTryAgain');
+
+	scoreTextBox = new textBox([645, 41], 'scoreTextBox');
+	scoreBox = new visualAsset('scoreBox', 'rectangle', 150, [640,9], 40);
+
+	easyText = new textBox([20, 38], 'easyText');
+	mediumText = new textBox([92, 38], 'mediumText');
+	hardText = new textBox([205, 38], 'hardText');
+	difficultyBox = new visualAsset('difficultyBox', 'rectangle', 267, [10, 10], 40);
+	easyBox = new visualAsset('easyBox', 'rectangle', 62, [15, 15], 30);
+	mediumBox = new visualAsset('mediumBox', 'rectangle', 107, [85, 15], 30);
+	hardBox = new visualAsset('hardBox', 'rectangle', 70, [200, 15], 30);
+
+	infobox = new textBox([5, 65], 'infoBox');
+	deadzone = new visualAsset('deadzone', 'rectangle', accuDragarea.canvas.width, [0, accuDragarea.canvas.height - deadZoneHeight], deadZoneHeight);
+	gameOverBox = new visualAsset('gameOverBox', 'rectangle', accuDragarea.canvas.width, [0,0], accuDragarea.canvas.height);
+	tryAgainBox = new visualAsset('tryAgainBox', 'rectangle', 350, [210, 265], 50);
+
+
+	//visualAssets = [redBall, greenBall, goalBox, infobox, deadzone];
+	visualAssets = [redBall, greenBall, goalBox, deadzone, scoreBox, difficultyBox];
+	textBoxes = [introBox1, introBox2, introBox3, scoreTextBox, easyText, mediumText, hardText];
+	buttons = [easyBox, mediumBox, hardBox];
+}
+
+var accuDragarea = {
+	canvas : document.createElement("canvas"),
+	start : function() {
+		this.canvas.width = CANVAS_WIDTH;
+		this.canvas.height = CANVAS_HEIGHT;
+		this.context = this.canvas.getContext("2d");
+		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+		this.interval = setInterval(updateGameArea, 10);
+		window.addEventListener('mousemove', function(e) {
+			if (clicked) {
+				accuDragarea.x = e.pageX;
+				accuDragarea.y = e.pageY;
+			}
+		})
+		window.addEventListener('mousedown', function(e) {
+			clicked = true;
+			accuDragarea.x = e.pageX;
+			accuDragarea.y = e.pageY;
+			if (!gameStarted && !gameOver && (accuDragarea.y > 60)) {
+				gameStarted = true;
+			}
+			checkGrab(e.pageX, e.pageY);
+			checkClick(e.pageX, e.pageY);
+
+		})
+		window.addEventListener('mouseup', function(e) {
+			clicked = false;
+			unGrab();
+		})
+	},
+	clear : function() {
+		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	}
+}
+
+
+	function updateGameArea() {
+		framecount += 1;
+		accuDragarea.clear();
+		updateVisualAssets();
+		updateButtons();
+		//Update text boxes last so they don't get overlapped
+		updateTextBoxes();
+		checkGameOver();
+		//infobox.update();
+	}
+
+	function textBox(xy, boxName) {
+		this.x = xy[0];
+		this.y = xy[1];
+
+		var ctx;
+		ctx = accuDragarea.context;
+		this.update = function() {
+			if(!gameStarted && !gameOver) {
+				if(boxName == 'introBox1') {
+					ctx.fillStyle = 'orange';
+					ctx.font = '30px Arial';
+					ctx.fillText('Click to start.', this.x, this.y);
+				}
+				else if(boxName == 'introBox2') {
+					ctx.fillStyle = 'yellow';
+					ctx.font = '20px Arial';
+					ctx.fillText("Don't let the red ball fall!", this.x, this.y);	
+				}
+				else if(boxName == 'introBox3') {
+					ctx.fillStyle = 'pink';
+					ctx.font = '14px Arial';
+					ctx.fillText("Drag this ball to the square!", this.x, this.y);
+				}
+			}
+	
+
+			if(boxName == 'infoBox') {
+				var fontWeight = 14;
+				ctx.fillSyle = 'black';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText("DEBUG", this.x, this.y);
+				//Line1
+				ctx.fillText("Frames: " + framecount, this.x, this.y+(fontWeight));
+				//Line2
+				//ctx.fillText("Square position: " + accuDragpiece.x + ', ' + accuDragpiece.y, this.x, this.y+(fontWeight*2));
+				//Line3
+				ctx.fillText("Mouse click: " + accuDragarea.x + ", " + accuDragarea.y, this.x, this.y+(fontWeight*3));
+				//Line4
+				ctx.fillText("Circle position: " + redBall.x + ", " + redBall.y, this.x, this.y+(fontWeight*4));
+			}
+			else if(boxName == 'scoreTextBox') {
+				var fontWeight = 36;
+				ctx.fillStyle = 'black';
+				ctx.font = fontWeight + 'px Arial';
+				ctx.fillText('Score: ' + score, this.x, this.y);
+			}
+			else if(boxName == 'easyText') {
+				var fontWeight = 25;
+				ctx.fillStyle = difficulty != 0 ? 'black' : 'white';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText('Easy', this.x, this.y);
+			}
+			else if(boxName == 'mediumText') {
+				var fontWeight = 25;
+				ctx.fillStyle = difficulty != 1 ? 'black' : 'white';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText('Medium', this.x, this.y);
+			}
+			else if(boxName == 'hardText') {
+				var fontWeight = 25;
+				ctx.fillStyle = difficulty != 2 ? 'black' : 'white';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText('Hard', this.x, this.y);
+			}
+			//Game over text boxes
+			else if(boxName == 'gameOverText1') {
+				var fontWeight = 55;
+				ctx.fillStyle = 'white';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText('GAME OVER!', this.x, this.y);
+			}
+			else if(boxName == 'gameOverText2') {
+				var fontWeight = 20;
+				ctx.fillStyle = 'white';
+				ctx.font = fontWeight + 'px Georgia';
+				ctx.fillText("Score = " + score + "           Don't give up!", this.x, this.y);
+			}
+			else if(boxName == 'gameOverTryAgain') {
+				var fontWeight = 30;
+				ctx.fillStyle = 'pink';
+				ctx.font = fontWeight + 'px Century Gothic';
+				ctx.fillText("Click here to try again!", this.x, this.y);
+			}
+		}
+	
+	}
+
+	function visualAsset(role, shape, size, coords, size2) {
+		this.size2 = size2 || 0;
+
+		this.role = role;
+		this.shape = shape;
+		this.size = size;
+		this.x = coords[0];
+		this.y = coords[1];
+		this.grabbed = false;
+		this.xoffset = 0;
+		this.yoffset = 0;
+
+		this.update = function() {
+			ctx = accuDragarea.context;
+			//Circle object definition
+			if (this.shape == 'circle') {
+				//Red ball
+				if (this.role == 'redBall') {
+					if (gameStarted) {
+						this.y += BALLSPEED;
+					}
+					//Red ball dead zone border
+					if(this.y >= CANVAS_HEIGHT - deadZoneHeight) {
+						gameOver = true;
+						this.y = CANVAS_HEIGHT - deadZoneHeight;
+					}
+					ctx.fillStyle = "red";
+				}
+				//Green ball
+				else if(this.role == 'greenBall') {
+					checkGoal(this.x, this.y);
+					ctx.fillStyle = 'cyan';
+				}
+
+				//Getting grabbed sets position to offset from mouse
+				if (this.grabbed) {
+					if(this.role == 'greenBall') {
+						redBall.grabbed = false;
+					}
+					this.x = accuDragarea.x + this.xoffset;
+					this.y = accuDragarea.y + this.yoffset;
+				}
+
+				//Borders
+				if (this.x <= 0) {
+					this.x = 0;
+				}
+				else if(this.x > CANVAS_WIDTH) {
+					this.x = CANVAS_WIDTH;
+				}
+				if (this.y <= 0) {
+					this.y = 0;
+				}
+				else if(this.y > CANVAS_HEIGHT) {
+					this.y = CANVAS_HEIGHT;
+				}
+				//Draw circle
+				ctx.beginPath();
+				ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+				ctx.stroke();
+				ctx.fill();
+			}
+			//Rectangle
+			else if (this.shape == 'rectangle') {
+				if (this.role == 'deadzone') {
+					ctx.fillStyle = 'red';
+				}
+				else if(this.role == 'scoreBox'){
+					ctx.fillStyle = 'grey';
+				}
+				else if(this.role == 'difficultyBox'){
+					ctx.fillStyle = 'purple';
+				}
+				else if(this.role == 'easyBox'){
+					ctx.fillStyle = difficulty != 0 ? 'LightBlue' : 'grey';
+									}
+				else if(this.role == 'mediumBox'){
+					ctx.fillStyle = difficulty != 1 ? 'Pink' : 'grey';
+				}
+				else if(this.role == 'hardBox'){
+					ctx.fillStyle = difficulty != 2 ? 'DarkViolet' : 'grey';
+				}
+				//Game over rectangles
+				if(gameOver) {
+					if(this.role == 'gameOverBox') {
+						ctx.fillStyle = 'black';
+					}
+					else if(this.role == 'tryAgainBox') {
+						ctx.fillStyle = 'grey';
+					}
+				}
+				ctx.fillRect(this.x, this.y, size, size2);
+			}
+			//Square
+			else if (this.shape == 'square') {
+				if (this.role == 'goalBox') {
+					ctx.fillStyle = '#ADD8E6';
+					ctx.fillRect(this.x, this.y, size, size);
+				}
+			}
+		}
+	}
+
+	function grabDistance(circleX, circleY, clickX, clickY) {
+		return Math.sqrt(Math.pow(Math.abs(circleX-clickX+10),2) + Math.pow(Math.abs(circleY-clickY+10),2));
+	}
+
+	function checkGrab(mouseX, mouseY) {
+		var circles = [redBall, greenBall];
+		for (var i=0; i < circles.length; i++) {
+			if (grabDistance(circles[i].x, circles[i].y, mouseX, mouseY) <= circles[i].size) {
+				circles[i].grabbed = true;
+				circles[i].xoffset = circles[i].x - mouseX;
+				circles[i].yoffset = circles[i].y - mouseY;
+			}
+			else {
+				circles[i].grabbed = false;
+			}
+		}
+	}
+	function inBounds(xy) {
+
+	}
+	function unGrab(){
+		var circles = [redBall, greenBall];
+		for (var i=0; i< circles.length; i++) {
+			circles[i].grabbed = false;
+		}
+	}
+
+	function checkClick(mouseX, mouseY) {
+		if(!gameStarted) {
+			//Add actions for difficulty buttons
+			//Check for Easy button click
+			if((mouseX > easyBox.x) && (mouseX < easyBox.x+easyBox.size) &&
+				(mouseY > easyBox.y) && (mouseY < easyBox.y+easyBox.size2)) {
+				difficulty = 0;
+				BALLSPEED = 1;
+			}
+			else if((mouseX > mediumBox.x) && (mouseX < mediumBox.x+mediumBox.size) &&
+				(mouseY > mediumBox.y) && (mouseY < mediumBox.y+mediumBox.size2)) {
+				difficulty = 1;
+				BALLSPEED = 2;
+			}
+			else if((mouseX > hardBox.x) && (mouseX < hardBox.x+hardBox.size) &&
+				(mouseY > hardBox.y) && (mouseY < hardBox.y+hardBox.size2)) {
+				difficulty = 2;
+				BALLSPEED = 3;
+			}
+		}
+		if(gameOver) {
+			//check for tryAgainButton click
+			if((mouseX > tryAgainBox.x) && (mouseX < tryAgainBox.x+tryAgainBox.size) &&
+				(mouseY > tryAgainBox.y) && mouseY < (tryAgainBox.y + tryAgainBox.size2)) {
+				resetGame();
+			}
+		}
+	}
+	function checkGoal(x, y) {
+		if((x > goalBox.x) && (x < goalBox.x + goalBox.size) &&
+			(y > goalBox.y) && (y < goalBox.y + goalBox.size)) {
+			console.log("GOOOOOOAAAAAAALLLLL!");
+			score += 1;
+			greenBall.x = GREENBALL_START[0];
+			greenBall.y = GREENBALL_START[1];
+			greenBall.grabbed = false;
+		}
+	}
+	function resetGame() {
+		visualAssets.splice(visualAssets.indexOf('gameOverBox'), 1);
+		visualAssets.splice(visualAssets.indexOf('tryAgainBox'), 1);
+		textBoxes.splice(textBoxes.indexOf('gameOverText1'), 1);
+		textBoxes.splice(textBoxes.indexOf('gameOverText2'), 1);
+		textBoxes.splice(textBoxes.indexOf('gameOverTryAgain'), 1);
+		redBall.x = REDBALL_START[0];
+		redBall.y = REDBALL_START[1];
+		greenBall.x = GREENBALL_START[0];
+		greenBall.y = GREENBALL_START[1];
+		score = 0;
+		gameOver = false;
+		gameStarted = false;
+	}
+
+	function checkGameOver() {
+		if(gameStarted && gameOver) {
+			endGame();
+		}
+	}
+	function endGame() {
+		visualAssets.push(gameOverBox);
+		visualAssets.push(tryAgainBox);
+		textBoxes.push(gameOverText1);
+		textBoxes.push(gameOverText2);
+		textBoxes.push(gameOverTryAgain);
+		gameStarted = false;
+	}
+
+	function updateVisualAssets() {
+		for (var i = 0; i < visualAssets.length; i++) {
+			visualAssets[i].update();
+		}
+	}
+	function updateTextBoxes() {
+		for (var i=0; i<textBoxes.length; i++) {
+			textBoxes[i].update();
+		}
+	}
+	function updateButtons() {
+		for (var i=0; i<buttons.length; i++) {
+			buttons[i].update();
+		}
+	}
+</script>
+<p>accuDrag</p>
+</body>
+</html>
